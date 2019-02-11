@@ -1,14 +1,19 @@
 import tensorflow as tf
 from dataset import input_fn
+import math
 
 # MODEL NAME
-MODEL_NAME = 'FCN'
+MODEL_NAME = 'FDFWD_TN'
 
 # MODEL HYPERPARAMETERS
 learning_rate = 0.00015
 n_hidden_neurons = []
 num_hidden_layers = len(n_hidden_neurons)
 num_classes = 2
+
+# INPUT SIZE HYPERPARAMETERS
+num_steps_per_tstep = 10
+pad = False
 
 # TRAINING HYPERPARAMETRS
 batch_size = 1024
@@ -48,59 +53,22 @@ class FCNetwork:
         if 'labels' in next_element:
             self.y = next_element['labels']['one_hot']
             self.y_cls = next_element['labels']['class']
+        self.global_size = int(self.global_x.shape[1])
+        self.local_size = int(self.local_x.shape[1])
+        if pad:
+            self.global_time_steps = math.ceil(
+                self.global_size / num_steps_per_tstep)
+            self.local_time_steps = math.ceil(
+                self.local_size / num_steps_per_tstep)
+        else:
+            self.global_time_steps = int(
+                self.global_size / num_steps_per_tstep)
+            self.local_time_steps = int(
+                self.local_size / num_steps_per_tstep)
+        print(self.local_time_steps)
 
     def create_graph(self):
-        with tf.variable_scope('global_view'):
-            with tf.variable_scope('layers'):
-                self.g_net = self.global_x
-                for l in range(num_hidden_layers):
-                    self.g_net = tf.layers.dense(
-                        self.g_net,
-                        n_hidden_neurons[l],
-                        activation=tf.nn.relu,
-                        kernel_initializer=tf.initializers.he_uniform(),
-                        name='g_net-' + str(l)
-                    )
-        with tf.variable_scope('local_view'):
-            with tf.variable_scope('layers'):
-                self.l_net = self.local_x
-                for l in range(num_hidden_layers):
-                    self.l_net = tf.layers.dense(
-                        self.l_net,
-                        n_hidden_neurons[l],
-                        activation=tf.nn.relu,
-                        kernel_initializer=tf.initializers.he_uniform(),
-                        name='l_net-' + str(l)
-                    )
-        with tf.variable_scope('concat'):
-            self.concat_tensor = tf.concat(
-                [self.g_net, self.l_net], axis=1, name='concat_tensor')
-        with tf.variable_scope('fc'):
-            self.net = tf.layers.dense(
-                self.concat_tensor,
-                self.concat_tensor.shape[1],
-                activation=tf.nn.relu,
-                kernel_initializer=tf.initializers.he_uniform(),
-                name='fc')
-        with tf.variable_scope('logits'):
-            self.logits = tf.layers.dense(
-                self.net,
-                num_classes,
-                activation=None,
-                kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                name='logits')
-        with tf.variable_scope('predict'):
-            self.y_pred = tf.nn.softmax(self.logits, name='y_pred')
-            self.y_pred_cls = tf.argmax(self.y_pred, axis=1, name='y_pred_cls')
-        with tf.variable_scope('optimizations'):
-            self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(
-                labels=self.y, logits=self.logits, name='cross_entropy')
-            self.loss = tf.reduce_mean(self.cross_entropy, name='loss')
-            self.optimizer = tf.train.AdamOptimizer(
-                learning_rate).minimize(self.loss, name='optimizer')
-        with tf.variable_scope('metrics'):
-            self.accuracy, self.acc_update_op = tf.metrics.accuracy(
-                labels=self.y_cls, predictions=self.y_pred_cls, name='accuracy')
+        return
 
     def create_sess(self):
         sess = tf.Session()
@@ -238,7 +206,7 @@ def dataset():
 if __name__ == '__main__':
     train_init_op, val_init_op, test_init_op, next_element = dataset()
     fc_network = FCNetwork(next_element)
-    fc_network.create_graph()
+    # fc_network.create_graph()
     fc_network.create_sess()
-    fc_network.train(train_init_op, val_init_op)
-    fc_network.test(test_init_op, True)
+    # fc_network.train(train_init_op, val_init_op)
+    # fc_network.test(test_init_op, True)
