@@ -12,11 +12,11 @@ num_hidden_layers = len(n_hidden_neurons)
 num_classes = 2
 
 # INPUT SIZE HYPERPARAMETERS
-num_steps_per_tstep = 10
+num_steps_per_tstep = 5
 pad = False
 
 # TRAINING HYPERPARAMETRS
-batch_size = 1024
+batch_size = 1
 num_epochs = 10
 input_config = {
     'label_feature': 'av_training_set',
@@ -46,7 +46,7 @@ gpu_session = tf.ConfigProto(
 )
 
 
-class FCNetwork:
+class FDFWD_TN:
     def __init__(self, next_element):
         self.global_x = next_element['time_series_features']['global_view']
         self.local_x = next_element['time_series_features']['local_view']
@@ -65,10 +65,22 @@ class FCNetwork:
                 self.global_size / num_steps_per_tstep)
             self.local_time_steps = int(
                 self.local_size / num_steps_per_tstep)
-        print(self.local_time_steps)
 
     def create_graph(self):
-        return
+        with tf.variable_scope('local_view'):
+            with tf.variable_scope('layers'):
+                # self.l_net = self.local_x
+                for l in range(self.local_time_steps):
+                    self.l_net = tf.layers.dense(
+                        self.local_x[l*num_steps_per_tstep:(l+1)*num_steps_per_tstep],
+                        1,
+                        activation=None,
+                        kernel_initializer=tf.initializers.ones,
+                        name='l_net-' + str(l)
+                    )
+                    print((l+1)*num_steps_per_tstep)
+                    tf.print(self.local_x[l*num_steps_per_tstep:(l+1)*num_steps_per_tstep])
+                    break
 
     def create_sess(self):
         sess = tf.Session()
@@ -76,69 +88,74 @@ class FCNetwork:
         init = tf.global_variables_initializer()
         sess.run(init)
         self.sess = sess
-        self.create_summary()
+        # self.create_summary()
 
     def train(self, train_init_op, val_init_op=None):
         print('\nTraining')
-        for epoch in range(num_epochs):
-            print('-' * 58)
-            print("\nEpoch: ", epoch)
-            # Training
-            self.sess.run(train_init_op)
-            self.sess.run(tf.local_variables_initializer())
-            batch_num = 0
-            while True:
-                try:
-                    summary, _, acc, loss = self.sess.run(
-                        [self.merged, self.optimizer, self.acc_update_op, self.loss])
-                    # print(
-                    #     "Batch", batch_num,
-                    #     "\tAccuracy: ", acc,
-                    #     "\tLoss: ", loss
-                    # )
-                    batch_num += 1
-                except tf.errors.OutOfRangeError:
-                    break
-            # Train Summary
-            self.train_summary_writer.add_summary(summary, epoch)
-            # total, count = self.sess.run(tf.local_variables())
-            # self.train_accuracy = total / count
-            self.train_accuracy = acc
+        self.sess.run(train_init_op)
+        self.sess.run(tf.local_variables_initializer())
+        lx, x = self.sess.run([self.local_x, self.l_net])
+        print(sum(sum(lx)))
+        print(x)
+        # for epoch in range(num_epochs):
+        #     print('-' * 58)
+        #     print("\nEpoch: ", epoch)
+        #     # Training
+        #     self.sess.run(train_init_op)
+        #     self.sess.run(tf.local_variables_initializer())
+        #     batch_num = 0
+        #     while True:
+        #         try:
+        #             summary, _, acc, loss = self.sess.run(
+        #                 [self.merged, self.optimizer, self.acc_update_op, self.loss])
+        #             # print(
+        #             #     "Batch", batch_num,
+        #             #     "\tAccuracy: ", acc,
+        #             #     "\tLoss: ", loss
+        #             # )
+        #             batch_num += 1
+        #         except tf.errors.OutOfRangeError:
+        #             break
+        #     # Train Summary
+        #     self.train_summary_writer.add_summary(summary, epoch)
+        #     # total, count = self.sess.run(tf.local_variables())
+        #     # self.train_accuracy = total / count
+        #     self.train_accuracy = acc
 
-            if val_init_op is not None:
-                # Validation
-                self.sess.run(val_init_op)
-                self.sess.run(tf.local_variables_initializer())
-                batch_num = 0
-                self.val_accuracy = 0
-                while True:
-                    try:
-                        summary, acc = self.sess.run([self.merged, self.acc_update_op])
-                        batch_num += 1
-                    except tf.errors.OutOfRangeError:
-                        break
-                # Val Summary
-                self.val_summary_writer.add_summary(summary, epoch)
-                # total, count = self.sess.run(tf.local_variables())
-                # self.val_accuracy = total / count
-                self.val_accuracy = acc
+        #     if val_init_op is not None:
+        #         # Validation
+        #         self.sess.run(val_init_op)
+        #         self.sess.run(tf.local_variables_initializer())
+        #         batch_num = 0
+        #         self.val_accuracy = 0
+        #         while True:
+        #             try:
+        #                 summary, acc = self.sess.run([self.merged, self.acc_update_op])
+        #                 batch_num += 1
+        #             except tf.errors.OutOfRangeError:
+        #                 break
+        #         # Val Summary
+        #         self.val_summary_writer.add_summary(summary, epoch)
+        #         # total, count = self.sess.run(tf.local_variables())
+        #         # self.val_accuracy = total / count
+        #         self.val_accuracy = acc
 
-            # Epoch results
-            print('-' * 58)
-            print("Training Accuracy: ", self.train_accuracy)
-            if val_init_op is not None:
-                print("Validation Accuracy: ", self.val_accuracy)
+        #     # Epoch results
+        #     print('-' * 58)
+        #     print("Training Accuracy: ", self.train_accuracy)
+        #     if val_init_op is not None:
+        #         print("Validation Accuracy: ", self.val_accuracy)
 
-            # Save latest Checkpoint in 2 formats
-            # model_epoch.ckpt and overwrite model.ckpt
-            self.saver.save(
-                self.sess,
-                './models/' + MODEL_NAME + '/model_' + str(epoch) + '.ckpt')
-            self.saver.save(
-                self.sess,
-                './models/' + MODEL_NAME + '/model.ckpt')
-            print('Model Saved')
-        print('-' * 58)
+        #     # Save latest Checkpoint in 2 formats
+        #     # model_epoch.ckpt and overwrite model.ckpt
+        #     self.saver.save(
+        #         self.sess,
+        #         './models/' + MODEL_NAME + '/model_' + str(epoch) + '.ckpt')
+        #     self.saver.save(
+        #         self.sess,
+        #         './models/' + MODEL_NAME + '/model.ckpt')
+        #     print('Model Saved')
+        # print('-' * 58)
         self.sess.close()
 
     def test(self, test_init_op, labels=False):
@@ -205,8 +222,8 @@ def dataset():
 
 if __name__ == '__main__':
     train_init_op, val_init_op, test_init_op, next_element = dataset()
-    fc_network = FCNetwork(next_element)
-    # fc_network.create_graph()
-    fc_network.create_sess()
-    # fc_network.train(train_init_op, val_init_op)
-    # fc_network.test(test_init_op, True)
+    fdtn_network = FDFWD_TN(next_element)
+    fdtn_network.create_graph()
+    fdtn_network.create_sess()
+    fdtn_network.train(train_init_op, val_init_op)
+    # fdtn_network.test(test_init_op, True)
