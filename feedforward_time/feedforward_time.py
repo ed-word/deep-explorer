@@ -3,6 +3,17 @@ import tensorflow as tf
 # MODEL NAME
 MODEL_NAME = 'FDFWD_TN'
 hparams = {}
+optimizer_dict = {
+    'adam': tf.train.AdamOptimizer(
+        hparams['learning_rate']),
+    'sgd': tf.train.GradientDescentOptimizer(
+        hparams['learning_rate'])
+}
+activation_dict = {
+    'relu': tf.nn.relu,
+    'sigmoid': tf.nn.sigmoid,
+    'tanh': tf.nn.tanh
+}
 
 
 class FDFWD_TN:
@@ -22,6 +33,10 @@ class FDFWD_TN:
             self.global_size / hparams['global_num_steps_per_tstep'])
         self.local_time_steps = int(
             self.local_size / hparams['local_num_steps_per_tstep'])
+
+        self.optimizer = optimizer_dict[hparams['optimizer']]
+        hparams['time_activation'] = activation_dict[hparams['time_activation']]
+        hparams['fc_activation'] = activation_dict[hparams['fc_activation']]
 
     def create_graph(self):
         if hparams['include_global']:
@@ -43,7 +58,7 @@ class FDFWD_TN:
                         layer = tf.layers.dense(
                             curr_input,
                             hparams['global_num_out_per_tsetp'],
-                            activation=tf.nn.relu,
+                            activation=hparams['time_activation'],
                             kernel_initializer=tf.initializers.he_uniform(),
                             name='g_net' + str(g)
                         )
@@ -62,7 +77,7 @@ class FDFWD_TN:
                     self.g_net = tf.layers.dense(
                         self.g_net,
                         hparams['time_layer_out_num'],
-                        activation=tf.nn.relu,
+                        activation=hparams['fc_activation'],
                         kernel_initializer=tf.initializers.he_uniform(),
                         name='fc')
 
@@ -85,7 +100,7 @@ class FDFWD_TN:
                     layer = tf.layers.dense(
                         curr_input,
                         hparams['local_num_out_per_tsetp'],
-                        activation=tf.nn.relu,
+                        activation=hparams['time_activation'],
                         kernel_initializer=tf.initializers.he_uniform(),
                         name='l_net' + str(l)
                     )
@@ -104,7 +119,7 @@ class FDFWD_TN:
                     self.l_net = tf.layers.dense(
                         self.l_net,
                         hparams['time_layer_out_num'],
-                        activation=tf.nn.relu,
+                        activation=hparams['fc_activation'],
                         kernel_initializer=tf.initializers.he_uniform(),
                         name='fc')
 
@@ -120,7 +135,7 @@ class FDFWD_TN:
                 self.net = tf.layers.dense(
                     self.net,
                     self.net.shape[1],
-                    activation=tf.nn.relu,
+                    activation=hparams['fc_activation'],
                     kernel_initializer=tf.initializers.he_uniform(),
                     name='fc-' + str(l))
         with tf.variable_scope('logits'):
@@ -137,8 +152,7 @@ class FDFWD_TN:
             self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(
                 labels=self.y, logits=self.logits, name='cross_entropy')
             self.loss = tf.reduce_mean(self.cross_entropy, name='loss')
-            self.optimizer = tf.train.AdamOptimizer(
-                hparams['learning_rate']).minimize(self.loss, name='optimizer')
+            self.optimizer = self.optimizer.minimize(self.loss, name='optimizer')
         with tf.variable_scope('metrics'):
             self.accuracy, self.acc_update_op = tf.metrics.accuracy(
                 labels=self.y_cls, predictions=self.y_pred_cls, name='accuracy')

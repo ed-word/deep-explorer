@@ -31,7 +31,9 @@ hparams['include_global'] = True
 # TRAINING HYPERPARAMETRS
 hparams['batch_size'] = 128
 hparams['num_epochs'] = 5
-
+hparams['optimizer'] = 'adam'
+hparams['time_activation'] = 'relu'
+hparams['fc_activation'] = 'relu'
 
 if hparams['overlap']:
     if hparams['local_num_overlap_prevstep'] > hparams['local_num_steps_per_tstep'] / 2:

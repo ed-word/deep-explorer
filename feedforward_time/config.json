@@ -1,0 +1,22 @@
+{
+  "name": "feedforward_timebeta1",
+  "algorithm": "BayesianOptimization",
+  "trialNumber": 5,
+  "concurrency": 1,
+  "path": ".",
+  "command": "python3 fdfwd_train.py",
+  "search_space": {
+      "goal": "MAXIMIZE",
+      "randomInitTrials": 3,
+      "params": [
+        {
+          "parameterName": "-batch_size",
+          "type": "DISCRETE",
+          "minValue": 0,
+          "maxValue": 0,
+          "feasiblePoints": "16, 32, 64, 128, 256",
+          "scalingType": "LINEAR"
+        }
+      ]
+  }
+}
