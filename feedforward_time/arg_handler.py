@@ -1,30 +1,7 @@
 import argparse
 
-hparams = {}
-# MODEL HYPERPARAMETERS
-hparams['learning_rate'] = 0.000075
-hparams['num_classes'] = 2
 
-# INPUT SIZE HYPERPARAMETERS
-hparams['local_num_steps_per_tstep'] = 32
-hparams['local_num_overlap_prevstep'] = 8
-hparams['local_num_out_per_tsetp'] = 8
-
-hparams['global_num_steps_per_tstep'] = 128
-hparams['global_num_overlap_prevstep'] = 16
-hparams['global_num_out_per_tsetp'] = 16
-
-hparams['time_layer_out_num'] = 8
-hparams['num_fc_layers'] = 2
-hparams['overlap'] = True
-hparams['include_global'] = True
-
-# TRAINING HYPERPARAMETRS
-hparams['batch_size'] = 128
-hparams['num_epochs'] = 625
-
-
-def arg_parser():
+def arg_parser(parser, hparams):
     def str2bool(v):
         if v.lower() in ('yes', 'true', 't', 'y', '1'):
             return True
@@ -32,8 +9,6 @@ def arg_parser():
             return False
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
-
-    parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "--learning_rate", type=float,
@@ -100,5 +75,7 @@ def arg_parser():
 
 
 if __name__ == '__main__':
-    hp = arg_parser()
+    exit
+    parser = argparse.ArgumentParser()
+    hp = arg_parser(parser, {})
     print(hp)

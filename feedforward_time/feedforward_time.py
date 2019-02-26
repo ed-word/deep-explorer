@@ -1,66 +1,14 @@
 import tensorflow as tf
-from dataset import input_fn
 
 # MODEL NAME
 MODEL_NAME = 'FDFWD_TN'
-
-# MODEL HYPERPARAMETERS
-learning_rate = 0.000075
-
-# INPUT SIZE HYPERPARAMETERS
-local_num_steps_per_tstep = 32
-local_num_overlap_prevstep = 8
-local_num_out_per_tsetp = 8
-
-global_num_steps_per_tstep = 128
-global_num_overlap_prevstep = 16
-global_num_out_per_tsetp = 16
-
-time_layer_out_num = 8
-num_fc_layers = 2
-overlap = True
-include_global = True
-
-# TRAINING HYPERPARAMETRS
-batch_size = 128
-num_epochs = 625
-
-if overlap:
-    if local_num_overlap_prevstep > local_num_steps_per_tstep / 2:
-        local_num_overlap_prevstep = int(local_num_steps_per_tstep / 2)
-    if global_num_overlap_prevstep > global_num_steps_per_tstep / 2:
-        global_num_overlap_prevstep = int(global_num_steps_per_tstep / 2)
-
-input_config = {
-    'label_feature': 'av_training_set',
-    'label_map': {'SCR1': 0, 'PC': 1, 'NTP': 0, 'INV': 0, 'AFP': 0, 'INJ1': 1},
-    'features': {
-      'global_view': {
-        'length': 2001,
-        'is_time_series': True
-        },
-      'local_view': {
-        'length': 201,
-        'is_time_series': True
-        }
-    }
-}
-
-# SESSION CONF
-cpu_session = tf.ConfigProto(
-    device_count={'CPU': 1, 'GPU': 0},
-    allow_soft_placement=False,
-    log_device_placement=False
-)
-gpu_session = tf.ConfigProto(
-    device_count={'CPU': 1, 'GPU': 1},
-    allow_soft_placement=False,
-    log_device_placement=False
-)
+hparams = {}
 
 
 class FDFWD_TN:
-    def __init__(self, next_element):
+    def __init__(self, next_element, hyperparam):
+        global hparams
+        hparams = hyperparam
         self.global_x = next_element['time_series_features']['global_view']
         self.local_x = next_element['time_series_features']['local_view']
         if 'labels' in next_element:
@@ -71,40 +19,40 @@ class FDFWD_TN:
         self.local_size = int(self.local_x.shape[1])
 
         self.global_time_steps = int(
-            self.global_size / global_num_steps_per_tstep)
+            self.global_size / hparams['global_num_steps_per_tstep'])
         self.local_time_steps = int(
-            self.local_size / local_num_steps_per_tstep)
+            self.local_size / hparams['local_num_steps_per_tstep'])
 
     def create_graph(self):
-        if include_global:
+        if hparams['include_global']:
             with tf.variable_scope('global_view'):
                 with tf.variable_scope('time_layers'):
                     self.g_layers = []
                     dynamic_batchsize = tf.shape(self.global_x)[0]
                     self.prev_out = tf.zeros(
-                        [dynamic_batchsize, global_num_out_per_tsetp], tf.float32
+                        [dynamic_batchsize, hparams['global_num_out_per_tsetp']], tf.float32
                     )
                     for g in range(self.global_time_steps):
                         curr_x = tf.slice(
                                     self.global_x,
-                                    [0, g*global_num_steps_per_tstep],
-                                    [-1, global_num_steps_per_tstep]
+                                    [0, g*hparams['global_num_steps_per_tstep']],
+                                    [-1, hparams['global_num_steps_per_tstep']]
                                 )
                         curr_input = tf.concat([self.prev_out, curr_x], axis=1)
 
                         layer = tf.layers.dense(
                             curr_input,
-                            global_num_out_per_tsetp,
+                            hparams['global_num_out_per_tsetp'],
                             activation=tf.nn.relu,
                             kernel_initializer=tf.initializers.he_uniform(),
                             name='g_net' + str(g)
                         )
                         self.g_layers.append(layer)
-                        if overlap:
+                        if hparams['overlap']:
                             ovlap = tf.slice(
                                     self.global_x,
-                                    [0, (g+1)*global_num_steps_per_tstep - global_num_overlap_prevstep],
-                                    [-1, global_num_overlap_prevstep]
+                                    [0, (g+1)*hparams['global_num_steps_per_tstep'] - hparams['global_num_overlap_prevstep']],
+                                    [-1, hparams['global_num_overlap_prevstep']]
                                 )
                             self.prev_out = tf.concat([layer, ovlap], axis=1)
                         else:
@@ -113,7 +61,7 @@ class FDFWD_TN:
                 with tf.variable_scope('fc'):
                     self.g_net = tf.layers.dense(
                         self.g_net,
-                        time_layer_out_num,
+                        hparams['time_layer_out_num'],
                         activation=tf.nn.relu,
                         kernel_initializer=tf.initializers.he_uniform(),
                         name='fc')
@@ -123,29 +71,30 @@ class FDFWD_TN:
                 self.l_layers = []
                 dynamic_batchsize = tf.shape(self.local_x)[0]
                 self.prev_out = tf.truncated_normal(
-                    [dynamic_batchsize, local_num_out_per_tsetp], dtype=tf.float32
+                    [dynamic_batchsize, hparams['local_num_out_per_tsetp']],
+                    dtype=tf.float32
                 )
                 for l in range(self.local_time_steps):
                     curr_x = tf.slice(
                                 self.local_x,
-                                [0, l*local_num_steps_per_tstep],
-                                [-1, local_num_steps_per_tstep]
+                                [0, l*hparams['local_num_steps_per_tstep']],
+                                [-1, hparams['local_num_steps_per_tstep']]
                             )
                     curr_input = tf.concat([self.prev_out, curr_x], axis=1)
 
                     layer = tf.layers.dense(
                         curr_input,
-                        local_num_out_per_tsetp,
+                        hparams['local_num_out_per_tsetp'],
                         activation=tf.nn.relu,
                         kernel_initializer=tf.initializers.he_uniform(),
                         name='l_net' + str(l)
                     )
                     self.l_layers.append(layer)
-                    if overlap:
+                    if hparams['overlap']:
                         ovlap = tf.slice(
                                 self.local_x,
-                                [0, (l+1)*local_num_steps_per_tstep - local_num_overlap_prevstep],
-                                [-1, local_num_overlap_prevstep]
+                                [0, (l+1)*hparams['local_num_steps_per_tstep'] - hparams['local_num_overlap_prevstep']],
+                                [-1, hparams['local_num_overlap_prevstep']]
                             )
                         self.prev_out = tf.concat([layer, ovlap], axis=1)
                     else:
@@ -154,12 +103,12 @@ class FDFWD_TN:
             with tf.variable_scope('fc'):
                     self.l_net = tf.layers.dense(
                         self.l_net,
-                        time_layer_out_num,
+                        hparams['time_layer_out_num'],
                         activation=tf.nn.relu,
                         kernel_initializer=tf.initializers.he_uniform(),
                         name='fc')
 
-        if include_global:
+        if hparams['include_global']:
             with tf.variable_scope('concat'):
                 self.concat_tensor = tf.concat(
                     [self.g_net, self.l_net], axis=1, name='concat_tensor')
@@ -167,7 +116,7 @@ class FDFWD_TN:
             self.concat_tensor = self.l_net
         with tf.variable_scope('fc'):
             self.net = self.concat_tensor
-            for l in range(num_fc_layers):
+            for l in range(hparams['num_fc_layers']):
                 self.net = tf.layers.dense(
                     self.net,
                     self.net.shape[1],
@@ -177,7 +126,7 @@ class FDFWD_TN:
         with tf.variable_scope('logits'):
             self.logits = tf.layers.dense(
                 self.net,
-                num_classes,
+                hparams['num_classes'],
                 activation=None,
                 kernel_initializer=tf.contrib.layers.xavier_initializer(),
                 name='logits')
@@ -189,7 +138,7 @@ class FDFWD_TN:
                 labels=self.y, logits=self.logits, name='cross_entropy')
             self.loss = tf.reduce_mean(self.cross_entropy, name='loss')
             self.optimizer = tf.train.AdamOptimizer(
-                learning_rate).minimize(self.loss, name='optimizer')
+                hparams['learning_rate']).minimize(self.loss, name='optimizer')
         with tf.variable_scope('metrics'):
             self.accuracy, self.acc_update_op = tf.metrics.accuracy(
                 labels=self.y_cls, predictions=self.y_pred_cls, name='accuracy')
@@ -202,7 +151,7 @@ class FDFWD_TN:
         self.sess = sess
         self.create_summary()
 
-    def train(self, train_init_op, val_init_op=None):
+    def train(self, train_init_op, val_init_op=None, print_stuff=True):
         print('\nTraining')
         self.sess.run(train_init_op)
         self.sess.run(tf.local_variables_initializer())
@@ -210,9 +159,10 @@ class FDFWD_TN:
         # for i in range(len(self.l_layers)):
         #     print("i: ", i, " ", self.sess.run(self.l_layers[i]))
 
-        for epoch in range(num_epochs):
-            print('-' * 58)
-            print("\nEpoch: ", epoch)
+        for epoch in range(hparams['num_epochs']):
+            if print_stuff:
+                print('-' * 58)
+                print("\nEpoch: ", epoch)
             # Training
             self.sess.run(train_init_op)
             self.sess.run(tf.local_variables_initializer())
@@ -254,10 +204,11 @@ class FDFWD_TN:
                 self.val_accuracy = acc
 
             # Epoch results
-            print('-' * 58)
-            print("Training Accuracy: ", self.train_accuracy)
-            if val_init_op is not None:
-                print("Validation Accuracy: ", self.val_accuracy)
+            if print_stuff:
+                print('-' * 58)
+                print("Training Accuracy: ", self.train_accuracy)
+                if val_init_op is not None:
+                    print("Validation Accuracy: ", self.val_accuracy)
 
             # Save latest Checkpoint in 2 formats
             # model_epoch.ckpt and overwrite model.ckpt
@@ -267,8 +218,10 @@ class FDFWD_TN:
             self.saver.save(
                 self.sess,
                 './models/' + MODEL_NAME + '/model.ckpt')
-            print('Model Saved')
-        print('-' * 58)
+            if print_stuff:
+                print('Model Saved')
+        if print_stuff:
+            print('-' * 58)
         self.sess.close()
 
     def test(self, test_init_op, labels=False):
@@ -296,10 +249,11 @@ class FDFWD_TN:
             except tf.errors.OutOfRangeError:
                 break
 
-        print("Predictions: ", predictions)
+        # print("Predictions: ", predictions)
         if labels:
             self.test_accuracy = acc
             print("Testing Accuracy: ", self.test_accuracy)
+        print(self.test_accuracy)
 
     def create_summary(self):
         # Model Saver
@@ -315,28 +269,5 @@ class FDFWD_TN:
         self.merged = tf.summary.merge_all()
 
 
-def dataset():
-    with tf.device('/cpu:0'):
-        with tf.variable_scope('Dataset'):
-            train_dataset = input_fn('train', input_config, batch_size)
-            val_dataset = input_fn('val', input_config, batch_size)
-            test_dataset = input_fn('test', input_config, batch_size)
-
-            iterator = tf.data.Iterator.from_structure(
-                train_dataset.output_types,
-                train_dataset.output_shapes)
-            next_element = iterator.get_next()
-
-            train_init_op = iterator.make_initializer(train_dataset)
-            val_init_op = iterator.make_initializer(val_dataset)
-            test_init_op = iterator.make_initializer(test_dataset)
-            return train_init_op, val_init_op, test_init_op, next_element
-
-
 if __name__ == '__main__':
-    train_init_op, val_init_op, test_init_op, next_element = dataset()
-    fdtn_network = FDFWD_TN(next_element)
-    fdtn_network.create_graph()
-    fdtn_network.create_sess()
-    fdtn_network.train(train_init_op, val_init_op)
-    fdtn_network.test(test_init_op, True)
+    exit

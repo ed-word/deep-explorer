@@ -2,6 +2,21 @@ import tensorflow as tf
 
 TFRECORD_DIR = 'tfrecord/'
 
+input_config = {
+        'label_feature': 'av_training_set',
+        'label_map': {'SCR1': 0, 'PC': 1, 'NTP': 0, 'INV': 0, 'AFP': 0, 'INJ1': 1},
+        'features': {
+          'global_view': {
+            'length': 2001,
+            'is_time_series': True
+            },
+          'local_view': {
+            'length': 201,
+            'is_time_series': True
+            }
+        }
+    }
+
 
 def parser(serialized_example, label_to_id, input_config):
     data_fields = {
@@ -57,21 +72,25 @@ def input_fn(filepath, input_config, batch_size):
     return dataset
 
 
+def get_batches(hparams):
+    with tf.device('/cpu:0'):
+        with tf.variable_scope('Dataset'):
+            train_dataset = input_fn('train', input_config, hparams['batch_size'])
+            val_dataset = input_fn('val', input_config, hparams['batch_size'])
+            test_dataset = input_fn('test', input_config, hparams['batch_size'])
+
+            iterator = tf.data.Iterator.from_structure(
+                train_dataset.output_types,
+                train_dataset.output_shapes)
+            next_element = iterator.get_next()
+
+            train_init_op = iterator.make_initializer(train_dataset)
+            val_init_op = iterator.make_initializer(val_dataset)
+            test_init_op = iterator.make_initializer(test_dataset)
+            return train_init_op, val_init_op, test_init_op, next_element
+
+
 if __name__ == '__main__':
-    input_config = {
-        'label_feature': 'av_training_set',
-        'label_map': {'SCR1': 0, 'PC': 1, 'NTP': 0, 'INV': 0, 'AFP': 0, 'INJ1': 1},
-        'features': {
-          'global_view': {
-            'length': 2001,
-            'is_time_series': True
-            },
-          'local_view': {
-            'length': 201,
-            'is_time_series': True
-            }
-        }
-    }
     batch_size = 5
     with tf.device('/cpu:0'):
         dataset = input_fn('train', input_config, batch_size)
