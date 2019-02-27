@@ -10,11 +10,127 @@
       "randomInitTrials": 3,
       "params": [
         {
+          "parameterName": "-learning_rate",
+          "type": "DOUBLE",
+          "minValue": 0.00001,
+          "maxValue": 0.1,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-local_num_steps_per_tstep",
+          "type": "INTEGER",
+          "minValue": 2,
+          "maxValue": 100,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-local_num_overlap_prevstep",
+          "type": "INTEGER",
+          "minValue": 1,
+          "maxValue": 50,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-local_num_out_per_tsetp",
+          "type": "INTEGER",
+          "minValue": 1,
+          "maxValue": 32,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-global_num_steps_per_tstep",
+          "type": "INTEGER",
+          "minValue": 2,
+          "maxValue": 500,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-global_num_overlap_prevstep",
+          "type": "INTEGER",
+          "minValue": 1,
+          "maxValue": 256,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-global_num_out_per_tsetp",
+          "type": "INTEGER",
+          "minValue": 1,
+          "maxValue": 32,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-time_layer_out_num",
+          "type": "INTEGER",
+          "minValue": 1,
+          "maxValue": 32,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-num_fc_layers",
+          "type": "INTEGER",
+          "minValue": 1,
+          "maxValue": 8,
+          "feasiblePoints": "",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-overlap",
+          "type": "CATEGORICAL",
+          "feasiblePoints": "True, False",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-include_global",
+          "type": "CATEGORICAL",
+          "feasiblePoints": "True, False",
+          "scalingType": "LINEAR"
+        },
+        {
           "parameterName": "-batch_size",
           "type": "DISCRETE",
           "minValue": 0,
           "maxValue": 0,
           "feasiblePoints": "16, 32, 64, 128, 256",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-num_epochs",
+          "type": "INTEGER",
+          "minValue": 32,
+          "maxValue": 1024,
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-optimizer",
+          "type": "CATEGORICAL",
+          "feasiblePoints": "adam, sgd",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-time_activation",
+          "type": "CATEGORICAL",
+          "feasiblePoints": "relu, tanh, sigmoid",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-fc_activation",
+          "type": "CATEGORICAL",
+          "feasiblePoints": "relu, tanh, sigmoid",
+          "scalingType": "LINEAR"
+        },
+        {
+          "parameterName": "-keep_prob",
+          "type": "DOUBLE",
+          "minValue": 0.5,
+          "maxValue": 1.0,
           "scalingType": "LINEAR"
         }
       ]

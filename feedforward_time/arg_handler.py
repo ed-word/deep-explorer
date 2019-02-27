@@ -82,6 +82,10 @@ def arg_parser(parser, hparams):
         "--fc_activation", choices=['relu', 'sigmoid', 'tanh'],
         default=hparams['fc_activation'],
         help="FC activation")
+    parser.add_argument(
+        "--keep_prob", type=float,
+        default=hparams['keep_prob'],
+        help="keep_prob")
 
     args = parser.parse_args()
     for arg in vars(args):

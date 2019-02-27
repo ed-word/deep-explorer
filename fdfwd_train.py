@@ -34,6 +34,7 @@ hparams['num_epochs'] = 5
 hparams['optimizer'] = 'adam'
 hparams['time_activation'] = 'relu'
 hparams['fc_activation'] = 'relu'
+hparams['keep_prob'] = 0.7
 
 if hparams['overlap']:
     if hparams['local_num_overlap_prevstep'] > hparams['local_num_steps_per_tstep'] / 2:

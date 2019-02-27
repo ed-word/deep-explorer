@@ -3,12 +3,6 @@ import tensorflow as tf
 # MODEL NAME
 MODEL_NAME = 'FDFWD_TN'
 hparams = {}
-optimizer_dict = {
-    'adam': tf.train.AdamOptimizer(
-        hparams['learning_rate']),
-    'sgd': tf.train.GradientDescentOptimizer(
-        hparams['learning_rate'])
-}
 activation_dict = {
     'relu': tf.nn.relu,
     'sigmoid': tf.nn.sigmoid,
@@ -34,7 +28,11 @@ class FDFWD_TN:
         self.local_time_steps = int(
             self.local_size / hparams['local_num_steps_per_tstep'])
 
-        self.optimizer = optimizer_dict[hparams['optimizer']]
+        if hparams['optimizer'] == 'adam':
+            self.optimizer = tf.train.AdamOptimizer(hparams['learning_rate'])
+        elif hparams['optimizer'] == 'sgd':
+            self.optimizer = tf.train.GradientDescentOptimizer(hparams['learning_rate'])
+
         hparams['time_activation'] = activation_dict[hparams['time_activation']]
         hparams['fc_activation'] = activation_dict[hparams['fc_activation']]
 
@@ -62,6 +60,7 @@ class FDFWD_TN:
                             kernel_initializer=tf.initializers.he_uniform(),
                             name='g_net' + str(g)
                         )
+                        layer = tf.nn.dropout(layer, keep_prob=hparams['keep_prob'])
                         self.g_layers.append(layer)
                         if hparams['overlap']:
                             ovlap = tf.slice(
@@ -104,6 +103,7 @@ class FDFWD_TN:
                         kernel_initializer=tf.initializers.he_uniform(),
                         name='l_net' + str(l)
                     )
+                    layer = tf.nn.dropout(layer, keep_prob=hparams['keep_prob'])
                     self.l_layers.append(layer)
                     if hparams['overlap']:
                         ovlap = tf.slice(
@@ -138,6 +138,7 @@ class FDFWD_TN:
                     activation=hparams['fc_activation'],
                     kernel_initializer=tf.initializers.he_uniform(),
                     name='fc-' + str(l))
+                self.net = tf.nn.dropout(self.net, keep_prob=hparams['keep_prob'])
         with tf.variable_scope('logits'):
             self.logits = tf.layers.dense(
                 self.net,
