@@ -7,7 +7,7 @@
   "command": "python3 fdfwd_train.py",
   "search_space": {
       "goal": "MAXIMIZE",
-      "randomInitTrials": 3,
+      "randomInitTrials": 2,
       "params": [
         {
           "parameterName": "-learning_rate",
